@@ -1,6 +1,7 @@
 package com.nhanxu.games
 
 import android.os.Bundle
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
@@ -53,7 +54,7 @@ class MainActivity : AppCompatActivity() {
         true
     }
 
-    private fun loadFragment(fragment: Fragment?) {
+    internal fun loadFragment(fragment: Fragment?) {
         fragment?.let {
             val transaction = supportFragmentManager.beginTransaction()
 
@@ -72,6 +73,18 @@ class MainActivity : AppCompatActivity() {
 
             transaction.commit()
             currentFragment = it
+        }
+    }
+
+    fun hideBottomNav() {
+        if (bottomNav?.visibility != View.GONE) {
+            bottomNav?.visibility = View.GONE
+        }
+    }
+
+    fun showBottomNav() {
+        if (bottomNav?.visibility != View.VISIBLE) {
+            bottomNav?.visibility = View.VISIBLE
         }
     }
 }
