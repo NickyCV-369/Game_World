@@ -1,9 +1,7 @@
 package com.nhanxu.games
 
 import android.os.Bundle
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -12,7 +10,7 @@ import android.widget.ListView
 import androidx.fragment.app.Fragment
 import com.android.volley.Request
 import com.android.volley.Response
-import com.android.volley.toolbox.JsonObjectRequest
+import com.android.volley.toolbox.JsonArrayRequest
 import com.android.volley.toolbox.Volley
 import org.json.JSONArray
 import org.json.JSONObject
@@ -28,22 +26,29 @@ class AllGamesFragment : Fragment(R.layout.fragment_all_games) {
         gamesListView = view.findViewById(R.id.gamesListView)
         gameWebView = view.findViewById(R.id.gameWebView)
 
+        // Cấu hình WebView
+        gameWebView.webViewClient = WebViewClient()  // Đảm bảo WebView mở trong chính ứng dụng
+        val webSettings = gameWebView.settings
+        webSettings.javaScriptEnabled = true // Bật JavaScript để trò chơi hoạt động
+        webSettings.setSupportZoom(false) // Tắt zoom
+        gameWebView.setVisibility(View.INVISIBLE) // Ẩn WebView khi chưa load xong
+
         loadGames()
     }
 
     private fun loadGames() {
-        val url = "https://nhanxu.com/api/games/"
+        val url = "https://nhanxu.com/api/games/"  // URL của API trả về dữ liệu game
 
         // Gửi yêu cầu API
-        val jsonObjectRequest = JsonObjectRequest(
+        val jsonArrayRequest = JsonArrayRequest(
             Request.Method.GET, url, null,
             Response.Listener { response ->
-                val games = response.getJSONArray("games")
+                // Kiểm tra dữ liệu trả về và xử lý
                 val gameNames = ArrayList<String>()
                 val gameUrls = ArrayList<String>()
 
-                for (i in 0 until games.length()) {
-                    val game: JSONObject = games.getJSONObject(i)
+                for (i in 0 until response.length()) {
+                    val game: JSONObject = response.getJSONObject(i)
                     gameNames.add(game.getString("name"))
                     gameUrls.add(game.getString("url"))
                 }
@@ -55,16 +60,56 @@ class AllGamesFragment : Fragment(R.layout.fragment_all_games) {
                 // Xử lý khi người dùng chọn game
                 gamesListView.setOnItemClickListener { _, _, position, _ ->
                     val gameUrl = gameUrls[position]
-                    gameWebView.webViewClient = WebViewClient()
-                    val webSettings: WebSettings = gameWebView.settings
-                    webSettings.javaScriptEnabled = true
-                    gameWebView.loadUrl(gameUrl)
+                    loadGameInWebView(gameUrl)  // Tải game vào WebView
                 }
             },
             Response.ErrorListener { error ->
-                error.printStackTrace() // Xử lý lỗi
+                error.printStackTrace()  // Xử lý lỗi khi không lấy được dữ liệu
             })
 
-        Volley.newRequestQueue(requireContext()).add(jsonObjectRequest)
+        // Gửi yêu cầu qua Volley
+        Volley.newRequestQueue(requireContext()).add(jsonArrayRequest)
+    }
+
+    private fun loadGameInWebView(gameUrl: String) {
+        gameWebView.setVisibility(View.VISIBLE)  // Hiển thị WebView khi URL đã sẵn sàng
+        gameWebView.loadUrl(gameUrl)  // Tải game vào WebView
+
+        // Cấu hình WebView để trò chơi hiển thị ở chế độ toàn màn hình
+        gameWebView.setWebViewClient(object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+
+                // Thực hiện đầy đủ màn hình cho game nếu có yêu cầu
+                view?.evaluateJavascript(
+                    """
+                    (function() {
+                        var iframe = document.querySelector('iframe');
+                        if (iframe) {
+                            iframe.style.width = '100%';
+                            iframe.style.height = '100vh';  // Đặt chiều cao toàn màn hình
+                            iframe.style.border = 'none';  // Loại bỏ viền
+                        }
+                    })();
+                    """.trimIndent(), null
+                )
+            }
+        })
+    }
+
+    private fun setFullScreen() {
+        activity?.window?.decorView?.systemUiVisibility = (
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                        or View.SYSTEM_UI_FLAG_FULLSCREEN
+                        or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                        or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                        or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                )
+    }
+
+    override fun onResume() {
+        super.onResume()
+        setFullScreen()  // Khi quay lại fragment, thiết lập chế độ toàn màn hình
     }
 }
