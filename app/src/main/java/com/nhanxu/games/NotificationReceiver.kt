@@ -14,8 +14,7 @@ class NotificationReceiver : BroadcastReceiver() {
         val channelId = "game_world_channel"
         val channelName = "Game World Notifications"
 
-        val notificationManager =
-            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(

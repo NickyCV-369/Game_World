@@ -6,6 +6,11 @@
         android:title="Home" />
 
     <item
+        android:id="@+id/nav_recently_played_games"
+        android:icon="@drawable/ic_recently_played_games"
+        android:title="Recent Games" />
+
+    <item
         android:id="@+id/nav_all_games"
         android:icon="@drawable/ic_all_games"
         android:title="All Games" />

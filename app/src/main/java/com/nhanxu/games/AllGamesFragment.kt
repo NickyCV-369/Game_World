@@ -1,115 +1,183 @@
 package com.nhanxu.games
 
+import android.content.Intent
+import android.graphics.Bitmap
 import android.os.Bundle
 import android.view.View
-import android.webkit.WebSettings
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import android.widget.ArrayAdapter
-import android.widget.ListView
+import android.webkit.*
 import androidx.fragment.app.Fragment
-import com.android.volley.Request
-import com.android.volley.Response
-import com.android.volley.toolbox.JsonArrayRequest
-import com.android.volley.toolbox.Volley
-import org.json.JSONArray
-import org.json.JSONObject
+import android.annotation.SuppressLint
+import androidx.core.net.toUri
+import android.os.Build
+import android.view.WindowInsets
+import android.view.WindowInsetsController
+import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AlertDialog
 
-class AllGamesFragment : Fragment(R.layout.fragment_all_games) {
-
-    private lateinit var gamesListView: ListView
-    private lateinit var gameWebView: WebView
+class AllGamesFragment : Fragment(R.layout.fragment_all_games){
+    private lateinit var webView: WebView
+    private var isInIframe = false
+    private lateinit var callback: OnBackPressedCallback
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        gamesListView = view.findViewById(R.id.gamesListView)
-        gameWebView = view.findViewById(R.id.gameWebView)
+        webView = view.findViewById(R.id.webView)
 
-        // Cấu hình WebView
-        gameWebView.webViewClient = WebViewClient()  // Đảm bảo WebView mở trong chính ứng dụng
-        val webSettings = gameWebView.settings
-        webSettings.javaScriptEnabled = true // Bật JavaScript để trò chơi hoạt động
-        webSettings.setSupportZoom(false) // Tắt zoom
-        gameWebView.setVisibility(View.INVISIBLE) // Ẩn WebView khi chưa load xong
+        callback = object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (isInIframe) {
+                    showExitGame()
+                } else if (webView.canGoBack()) {
+                    webView.goBack()
+                } else {
+                    showExitConfirmation()
+                }
+            }
+        }
 
-        loadGames()
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, callback)
+
+        initWebView()
     }
 
-    private fun loadGames() {
-        val url = "https://nhanxu.com/api/games/"  // URL của API trả về dữ liệu game
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun initWebView() {
+        CookieManager.getInstance().setAcceptCookie(true)
+        CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
 
-        // Gửi yêu cầu API
-        val jsonArrayRequest = JsonArrayRequest(
-            Request.Method.GET, url, null,
-            Response.Listener { response ->
-                // Kiểm tra dữ liệu trả về và xử lý
-                val gameNames = ArrayList<String>()
-                val gameUrls = ArrayList<String>()
+        webView.settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
 
-                for (i in 0 until response.length()) {
-                    val game: JSONObject = response.getJSONObject(i)
-                    gameNames.add(game.getString("name"))
-                    gameUrls.add(game.getString("url"))
-                }
+        webView.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            allowContentAccess = true
+            allowFileAccess = true
+            mediaPlaybackRequiresUserGesture = false
+            setSupportZoom(false)
+            cacheMode = WebSettings.LOAD_DEFAULT
+        }
 
-                // Hiển thị danh sách game
-                val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, gameNames)
-                gamesListView.adapter = adapter
+        webView.isVerticalScrollBarEnabled = false
+        webView.isHorizontalScrollBarEnabled = false
 
-                // Xử lý khi người dùng chọn game
-                gamesListView.setOnItemClickListener { _, _, position, _ ->
-                    val gameUrl = gameUrls[position]
-                    loadGameInWebView(gameUrl)  // Tải game vào WebView
-                }
-            },
-            Response.ErrorListener { error ->
-                error.printStackTrace()  // Xử lý lỗi khi không lấy được dữ liệu
-            })
+        addJavascriptBridge()
 
-        // Gửi yêu cầu qua Volley
-        Volley.newRequestQueue(requireContext()).add(jsonArrayRequest)
-    }
+        webView.webViewClient = object : WebViewClient() {
+            override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+                super.onPageStarted(view, url, favicon)
+            }
 
-    private fun loadGameInWebView(gameUrl: String) {
-        gameWebView.setVisibility(View.VISIBLE)  // Hiển thị WebView khi URL đã sẵn sàng
-        gameWebView.loadUrl(gameUrl)  // Tải game vào WebView
-
-        // Cấu hình WebView để trò chơi hiển thị ở chế độ toàn màn hình
-        gameWebView.setWebViewClient(object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
 
-                // Thực hiện đầy đủ màn hình cho game nếu có yêu cầu
                 view?.evaluateJavascript(
                     """
-                    (function() {
-                        var iframe = document.querySelector('iframe');
-                        if (iframe) {
-                            iframe.style.width = '100%';
-                            iframe.style.height = '100vh';  // Đặt chiều cao toàn màn hình
-                            iframe.style.border = 'none';  // Loại bỏ viền
-                        }
-                    })();
-                    """.trimIndent(), null
+        (function() {
+            var iframes = document.getElementsByTagName('iframe');
+            if (iframes.length === 0) {
+                window.androidBridge.iframeRemoved();  
+            } else {
+                window.androidBridge.iframeDetected(); 
+            }
+        })();
+        """.trimIndent(), null
                 )
             }
-        })
+
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                val url = request?.url.toString()
+
+                if (url.contains("gamepix.com") || url.contains("gamemonetize.com") || url.contains("y8.com")) {
+                    return false
+                }
+
+                if (!url.contains("nhanxu.com")) {
+                    startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+                    return true
+                }
+
+                view?.loadUrl(url)
+                return true
+            }
+        }
+
+        webView.loadUrl("https://nhanxu.com/app/all-games")
     }
 
-    private fun setFullScreen() {
-        activity?.window?.decorView?.systemUiVisibility = (
-                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                        or View.SYSTEM_UI_FLAG_FULLSCREEN
-                        or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                        or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                        or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                        or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                )
+    @SuppressLint("JavascriptInterface")
+    private fun addJavascriptBridge() {
+        webView.addJavascriptInterface(object {
+            @JavascriptInterface
+            fun iframeDetected() {
+                activity?.runOnUiThread {
+                    showImmersiveMode()
+                    isInIframe = true
+                }
+            }
+
+            @JavascriptInterface
+            fun iframeRemoved() {
+                activity?.runOnUiThread {
+                    showNormalMode()
+                    isInIframe = false
+                }
+            }
+        }, "androidBridge")
     }
 
-    override fun onResume() {
-        super.onResume()
-        setFullScreen()  // Khi quay lại fragment, thiết lập chế độ toàn màn hình
+    private fun showImmersiveMode() {
+        (activity as? MainActivity)?.hideBottomNav()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Android 11 trở lên (API level 30)
+            val insetsController = requireActivity().window.insetsController
+            insetsController?.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+            insetsController?.systemBarsBehavior =
+                WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        } else {
+            requireActivity().window.decorView.systemUiVisibility = (
+                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                            or View.SYSTEM_UI_FLAG_FULLSCREEN
+                            or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                            or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                            or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                            or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    )
+        }
+    }
+
+    private fun showNormalMode() {
+        (activity as? MainActivity)?.showBottomNav()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val insetsController = requireActivity().window.insetsController
+            insetsController?.show(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+        } else {
+            requireActivity().window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
+        }
+    }
+
+    private fun showExitGame() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Exit Game")
+            .setMessage("Do you want to exit the game?")
+            .setPositiveButton("Yes") { _, _ -> webView.goBack() }
+            .setNegativeButton("No", null)
+            .show()
+    }
+
+    private fun showExitConfirmation() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Exit App")
+            .setMessage("Are you sure you want to exit?")
+            .setPositiveButton("Yes") { _, _ -> requireActivity().finish() }
+            .setNegativeButton("No", null)
+            .show()
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        callback.remove()
     }
 }

@@ -16,23 +16,18 @@ import kotlinx.coroutines.*
 import java.net.HttpURLConnection
 import java.net.URL
 import android.app.PendingIntent
-import android.webkit.*
 import android.app.AlarmManager
 
-class MainActivity : AppCompatActivity(), WebViewListener {
+class MainActivity : AppCompatActivity() {
 
     private var bottomNav: BottomNavigationView? = null
     private var currentFragment: Fragment? = null
     private var isDialogVisible = false
+    private var isNetworkChecked = false
+    private var isNetworkRecentlyPlayedChecked = false
     private lateinit var networkCallback: ConnectivityManager.NetworkCallback
-
-    override fun onUrlChanged(url: String) {
-        lifecycleScope.launch {
-            if (!isNetworkAvailableAndCanConnectToInternet()) {
-                Toast.makeText(this@MainActivity, "No internet connection. Cannot access the game.", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
+    private var selectedFragment: Fragment? = null
+    private var alertDialog: AlertDialog? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,8 +59,6 @@ class MainActivity : AppCompatActivity(), WebViewListener {
     }
 
     private val navListener = BottomNavigationView.OnNavigationItemSelectedListener { item ->
-        var selectedFragment: Fragment? = null
-
         when (item.itemId) {
             R.id.nav_home -> {
                 selectedFragment = supportFragmentManager.findFragmentByTag(HomeFragment::class.java.simpleName)
@@ -73,7 +66,45 @@ class MainActivity : AppCompatActivity(), WebViewListener {
                     selectedFragment = HomeFragment()
                 }
             }
+            R.id.nav_recently_played_games-> {
+                if (!isNetworkRecentlyPlayedChecked) {
+                    lifecycleScope.launch {
+                        if (isNetworkAvailableAndCanConnectToInternet()) {
+                            selectedFragment = supportFragmentManager.findFragmentByTag(RecentlyPlayedGamesFragment::class.java.simpleName)
+                            if (selectedFragment == null) {
+                                selectedFragment = RecentlyPlayedGamesFragment()
+                            }
+                            loadFragment(selectedFragment)
+                        } else {
+                            showNoInternetDialog()
+                        }
+                    }
+                    isNetworkRecentlyPlayedChecked = true
+                    return@OnNavigationItemSelectedListener true
+                }
+
+                selectedFragment = supportFragmentManager.findFragmentByTag(RecentlyPlayedGamesFragment::class.java.simpleName)
+                if (selectedFragment == null) {
+                    selectedFragment = RecentlyPlayedGamesFragment()
+                }
+            }
             R.id.nav_all_games -> {
+                if (!isNetworkChecked) {
+                    lifecycleScope.launch {
+                        if (isNetworkAvailableAndCanConnectToInternet()) {
+                            selectedFragment = supportFragmentManager.findFragmentByTag(AllGamesFragment::class.java.simpleName)
+                            if (selectedFragment == null) {
+                                selectedFragment = AllGamesFragment()
+                            }
+                            loadFragment(selectedFragment)
+                        } else {
+                            showNoInternetDialog()
+                        }
+                    }
+                    isNetworkChecked = true
+                    return@OnNavigationItemSelectedListener true
+                }
+
                 selectedFragment = supportFragmentManager.findFragmentByTag(AllGamesFragment::class.java.simpleName)
                 if (selectedFragment == null) {
                     selectedFragment = AllGamesFragment()
@@ -153,11 +184,32 @@ class MainActivity : AppCompatActivity(), WebViewListener {
 
     private fun showNoInternetDialog() {
         isDialogVisible = true
-        AlertDialog.Builder(this)
+        alertDialog = AlertDialog.Builder(this)
             .setTitle("No Internet Connection")
             .setMessage("No internet access. Please check your connection to continue playing.")
             .setCancelable(false)
-            .setPositiveButton("Retry") { _, _ -> recreate() }
+            .setPositiveButton("Retry") { _, _ ->
+                lifecycleScope.launch {
+                    if (isNetworkAvailableAndCanConnectToInternet()) {
+                        when (bottomNav?.selectedItemId) {
+                            R.id.nav_home -> {
+                                navListener.onNavigationItemSelected(bottomNav?.menu?.findItem(R.id.nav_home)!!)
+                            }
+                            R.id.nav_recently_played_games -> {
+                                navListener.onNavigationItemSelected(bottomNav?.menu?.findItem(R.id.nav_recently_played_games)!!)
+                            }
+                            R.id.nav_all_games -> {
+                                navListener.onNavigationItemSelected(bottomNav?.menu?.findItem(R.id.nav_all_games)!!)
+                            }
+                            R.id.nav_settings -> {
+                                navListener.onNavigationItemSelected(bottomNav?.menu?.findItem(R.id.nav_settings)!!)
+                            }
+                        }
+                    } else {
+                        Toast.makeText(this@MainActivity, "Internet is still not available.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
             .setNegativeButton("Exit") { _, _ -> finish() }
             .show()
     }
@@ -208,7 +260,22 @@ class MainActivity : AppCompatActivity(), WebViewListener {
                             if (isNetworkAvailableAndCanConnectToInternet()) {
                                 Toast.makeText(this@MainActivity, "Internet reconnected!", Toast.LENGTH_SHORT).show()
                                 if (!isFinishing) {
-                                    recreate()
+                                    alertDialog?.dismiss()
+
+                                    when (bottomNav?.selectedItemId) {
+                                        R.id.nav_home -> {
+                                            navListener.onNavigationItemSelected(bottomNav?.menu?.findItem(R.id.nav_home)!!)
+                                        }
+                                        R.id.nav_recently_played_games -> {
+                                            navListener.onNavigationItemSelected(bottomNav?.menu?.findItem(R.id.nav_recently_played_games)!!)
+                                        }
+                                        R.id.nav_all_games -> {
+                                            navListener.onNavigationItemSelected(bottomNav?.menu?.findItem(R.id.nav_all_games)!!)
+                                        }
+                                        R.id.nav_settings -> {
+                                            navListener.onNavigationItemSelected(bottomNav?.menu?.findItem(R.id.nav_settings)!!)
+                                        }
+                                    }
                                 }
                             }
                         }

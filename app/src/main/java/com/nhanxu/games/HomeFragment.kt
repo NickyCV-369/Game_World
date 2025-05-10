@@ -7,7 +7,6 @@ import android.view.View
 import android.webkit.*
 import androidx.fragment.app.Fragment
 import android.annotation.SuppressLint
-import android.content.Context
 import androidx.core.net.toUri
 import com.google.android.material.appbar.MaterialToolbar
 import android.os.Build
@@ -16,26 +15,12 @@ import android.view.WindowInsetsController
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 
-interface WebViewListener {
-    fun onUrlChanged(url: String)
-}
-
 class HomeFragment : Fragment(R.layout.fragment_home) {
 
     private lateinit var webView: WebView
     private lateinit var topAppBar: MaterialToolbar
     private var isInIframe = false
-
-    private var webViewListener: WebViewListener? = null
-
-    override fun onAttach(context: Context) {
-        super.onAttach(context)
-        if (context is WebViewListener) {
-            webViewListener = context
-        } else {
-            throw RuntimeException("$context must implement WebViewListener")
-        }
-    }
+    private lateinit var callback: OnBackPressedCallback
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -43,7 +28,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         topAppBar = requireActivity().findViewById(R.id.topAppBar)
         webView = view.findViewById(R.id.webView)
 
-        val callback = object : OnBackPressedCallback(true) {
+        callback = object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (isInIframe) {
                     showExitGame()
@@ -116,10 +101,6 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
 
-                url?.let {
-                    webViewListener?.onUrlChanged(it)
-                }
-
                 view?.evaluateJavascript(
                     """
         (function() {
@@ -127,13 +108,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
             if (iframes.length === 0) {
                 window.androidBridge.iframeRemoved();  
             } else {
-                for (var i = 0; i < iframes.length; i++) {
-                    var src = iframes[i].src;
-                    if (src.includes('html5.gamemonetize.co')) {
-                        window.androidBridge.iframeDetected(); 
-                        break; 
-                    }
-                }
+                window.androidBridge.iframeDetected(); 
             }
         })();
         """.trimIndent(), null
@@ -142,6 +117,10 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
 
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url.toString()
+
+                if (url.contains("gamepix.com") || url.contains("gamemonetize.com") || url.contains("y8.com")) {
+                    return false
+                }
 
                 if (!url.contains("nhanxu.com")) {
                     startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
@@ -227,5 +206,10 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
             .setPositiveButton("Yes") { _, _ -> requireActivity().finish() }
             .setNegativeButton("No", null)
             .show()
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        callback.remove()
     }
 }

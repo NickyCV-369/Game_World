@@ -25,7 +25,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
             openPrivacyPolicy()
         }
 
-        val version = "3.6.9"
+        val version = "6.9.3"
         tvVersion.text = "Version: $version"
     }
 
