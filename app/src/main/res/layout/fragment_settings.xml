@@ -6,10 +6,23 @@
     android:padding="16dp">
 
     <Button
+        android:id="@+id/btn_clear_cache"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Clear Cache"
+        android:background="@drawable/button_style"
+        android:textColor="#ffffff"
+        android:textSize="16sp"
+        android:layout_marginBottom="16dp"
+        android:layout_marginTop="16dp"/>
+
+    <Button
         android:id="@+id/btn_about_us"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="About Us"
+        android:background="@drawable/button_style"
+        android:textColor="#ffffff"
         android:textSize="16sp"
         android:layout_marginBottom="16dp" />
 
@@ -18,6 +31,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Privacy Policy"
+        android:background="@drawable/button_style"
+        android:textColor="#ffffff"
         android:textSize="16sp"
         android:layout_marginBottom="16dp" />
 

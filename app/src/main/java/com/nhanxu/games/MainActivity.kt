@@ -17,6 +17,9 @@ import java.net.HttpURLConnection
 import java.net.URL
 import android.app.PendingIntent
 import android.app.AlarmManager
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdView
+import com.google.android.gms.ads.MobileAds
 
 class MainActivity : AppCompatActivity() {
 
@@ -28,10 +31,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var networkCallback: ConnectivityManager.NetworkCallback
     private var selectedFragment: Fragment? = null
     private var alertDialog: AlertDialog? = null
+    private lateinit var mAdView: AdView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        MobileAds.initialize(this) {}
+        mAdView = findViewById(R.id.adView)
+        val adRequest = AdRequest.Builder().build()
+        mAdView.loadAd(adRequest)
 
         bottomNav = findViewById(R.id.bottomNav)
         bottomNav?.setOnItemSelectedListener(navListener)
@@ -126,7 +135,13 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
+        mAdView.pause()
         unregisterReceiverSafe()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        mAdView.resume()
     }
 
     internal fun loadFragment(fragment: Fragment?) {
@@ -149,6 +164,14 @@ class MainActivity : AppCompatActivity() {
             transaction.commit()
             currentFragment = it
         }
+    }
+
+    fun showAdView() {
+        mAdView.visibility = View.VISIBLE
+    }
+
+    fun hideAdView() {
+        mAdView.visibility = View.GONE
     }
 
     fun hideBottomNav() {
@@ -191,6 +214,9 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("Retry") { _, _ ->
                 lifecycleScope.launch {
                     if (isNetworkAvailableAndCanConnectToInternet()) {
+                        val adRequest = AdRequest.Builder().build()
+                        mAdView.loadAd(adRequest)
+
                         when (bottomNav?.selectedItemId) {
                             R.id.nav_home -> {
                                 navListener.onNavigationItemSelected(bottomNav?.menu?.findItem(R.id.nav_home)!!)
@@ -207,6 +233,7 @@ class MainActivity : AppCompatActivity() {
                         }
                     } else {
                         Toast.makeText(this@MainActivity, "Internet is still not available.", Toast.LENGTH_SHORT).show()
+                        showNoInternetDialog()
                     }
                 }
             }
@@ -216,14 +243,10 @@ class MainActivity : AppCompatActivity() {
 
     private suspend fun isNetworkAvailableAndCanConnectToInternet(): Boolean = withContext(Dispatchers.IO) {
         val cm = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
-        val isConnected = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val network = cm.activeNetwork ?: return@withContext false
-            val capabilities = cm.getNetworkCapabilities(network) ?: return@withContext false
-            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-        } else {
-            val networkInfo = cm.activeNetworkInfo
-            networkInfo != null && networkInfo.isConnected
-        }
+
+        val network = cm.activeNetwork ?: return@withContext false
+        val capabilities = cm.getNetworkCapabilities(network) ?: return@withContext false
+        val isConnected = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
 
         if (!isConnected) return@withContext false
 
@@ -252,7 +275,6 @@ class MainActivity : AppCompatActivity() {
         if (!isReceiverRegistered) {
             val cm = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 networkCallback = object : ConnectivityManager.NetworkCallback() {
                     override fun onAvailable(network: Network) {
                         super.onAvailable(network)
@@ -260,6 +282,9 @@ class MainActivity : AppCompatActivity() {
                             if (isNetworkAvailableAndCanConnectToInternet()) {
                                 Toast.makeText(this@MainActivity, "Internet reconnected!", Toast.LENGTH_SHORT).show()
                                 if (!isFinishing) {
+                                    val adRequest = AdRequest.Builder().build()
+                                    mAdView.loadAd(adRequest)
+
                                     alertDialog?.dismiss()
 
                                     when (bottomNav?.selectedItemId) {
@@ -293,10 +318,6 @@ class MainActivity : AppCompatActivity() {
                     NetworkRequest.Builder().build(),
                     networkCallback
                 )
-            } else {
-                val filter = IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION)
-                registerReceiver(networkReceiver, filter)
-            }
 
             isReceiverRegistered = true
         }
@@ -330,12 +351,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        mAdView.destroy()
 
         if (isDialogVisible) {
             unregisterReceiverSafe()
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             val cm = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
             if (::networkCallback.isInitialized) {
                 try {
@@ -343,7 +364,6 @@ class MainActivity : AppCompatActivity() {
                 } catch (e: IllegalArgumentException) {
                 }
             }
-        }
 
         isReceiverRegistered = false
     }

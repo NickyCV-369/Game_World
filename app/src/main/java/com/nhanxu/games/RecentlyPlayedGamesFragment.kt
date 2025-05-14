@@ -11,6 +11,7 @@ import androidx.core.net.toUri
 import android.os.Build
 import android.view.WindowInsets
 import android.view.WindowInsetsController
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 
@@ -88,8 +89,9 @@ class RecentlyPlayedGamesFragment : Fragment(R.layout.fragment_recently_played_g
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url.toString()
 
-                if (url.contains("gamepix.com") || url.contains("gamemonetize.com") || url.contains("y8.com")) {
-                    return false
+                if (url.contains("gamepix.com") || url.contains("gamemonetize.com") || url.contains("y8.com") || url.contains("kidsgame.io") || url.contains("hyhygames.com") || url.contains("vodogame.com")) {
+                    Toast.makeText(requireContext(), "Have fun playing the game!!!", Toast.LENGTH_SHORT).show()
+                    return true
                 }
                 
                 if (!url.contains("nhanxu.com")) {
@@ -128,6 +130,7 @@ class RecentlyPlayedGamesFragment : Fragment(R.layout.fragment_recently_played_g
 
     private fun showImmersiveMode() {
         (activity as? MainActivity)?.hideBottomNav()
+        (activity as? MainActivity)?.hideAdView()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             // Android 11 trở lên (API level 30)
@@ -149,6 +152,7 @@ class RecentlyPlayedGamesFragment : Fragment(R.layout.fragment_recently_played_g
 
     private fun showNormalMode() {
         (activity as? MainActivity)?.showBottomNav()
+        (activity as? MainActivity)?.showAdView()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val insetsController = requireActivity().window.insetsController
@@ -176,8 +180,21 @@ class RecentlyPlayedGamesFragment : Fragment(R.layout.fragment_recently_played_g
             .show()
     }
 
+    fun clearWebViewData() {
+        webView.clearCache(true)
+        webView.clearHistory()
+
+        val cookieManager = CookieManager.getInstance()
+        cookieManager.removeAllCookies(null)
+        cookieManager.flush()
+
+        WebStorage.getInstance().deleteAllData()
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
         callback.remove()
+        webView.onPause()
+        webView.destroy()
     }
 }

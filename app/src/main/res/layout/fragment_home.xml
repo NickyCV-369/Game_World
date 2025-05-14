@@ -3,21 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     tools:context=".HomeFragment">
-
-    <com.google.android.material.appbar.MaterialToolbar
-        android:id="@+id/topAppBar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@android:color/white"
-        android:elevation="8dp"
-        app:title="Game World"
-        app:titleTextColor="#3D5B43"
-        app:titleTextAppearance="@style/ToolbarTitleStyle"
-        app:navigationIcon="@null"
-        app:menu="@menu/top_app_bar_menu" />
 
     <android.webkit.WebView
         android:id="@+id/webView"

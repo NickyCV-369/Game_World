@@ -8,24 +8,22 @@ import android.webkit.*
 import androidx.fragment.app.Fragment
 import android.annotation.SuppressLint
 import androidx.core.net.toUri
-import com.google.android.material.appbar.MaterialToolbar
 import android.os.Build
 import android.view.WindowInsets
 import android.view.WindowInsetsController
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 
 class HomeFragment : Fragment(R.layout.fragment_home) {
 
     private lateinit var webView: WebView
-    private lateinit var topAppBar: MaterialToolbar
     private var isInIframe = false
     private lateinit var callback: OnBackPressedCallback
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        topAppBar = requireActivity().findViewById(R.id.topAppBar)
         webView = view.findViewById(R.id.webView)
 
         callback = object : OnBackPressedCallback(true) {
@@ -42,33 +40,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
 
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, callback)
 
-        topAppBar.setOnMenuItemClickListener { menuItem ->
-            when (menuItem.itemId) {
-                R.id.action_notifications -> {
-                    showWelcomeDialog()
-                    true
-                }
-                else -> false
-            }
-        }
-
         initWebView()
-    }
-
-    private fun showWelcomeDialog() {
-        AlertDialog.Builder(requireContext())
-            .setTitle("Welcome to Game World - Instant Games!")
-            .setMessage("""
-            There are many games for you to choose from and play immediately without wasting time on installation!
-            All your progress will be saved, and you can continue playing later!
-
-            If you feel that there are too few games or the games are not exciting enough and you need more, don't hesitate to contact us in the Settings!
-
-            Sometimes ads may be uncomfortable, but please support us!
-            Feel free to share your feedback so we can improve!
-        """.trimIndent())
-            .setPositiveButton("OK", null)
-            .show()
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -118,8 +90,9 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url.toString()
 
-                if (url.contains("gamepix.com") || url.contains("gamemonetize.com") || url.contains("y8.com")) {
-                    return false
+                if (url.contains("gamepix.com") || url.contains("gamemonetize.com") || url.contains("y8.com") || url.contains("kidsgame.io") || url.contains("hyhygames.com") || url.contains("vodogame.com")) {
+                    Toast.makeText(requireContext(), "Have fun playing the game!!!", Toast.LENGTH_SHORT).show()
+                    return true
                 }
 
                 if (!url.contains("nhanxu.com")) {
@@ -157,8 +130,8 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
     }
 
     private fun showImmersiveMode() {
-        topAppBar.visibility = View.GONE
         (activity as? MainActivity)?.hideBottomNav()
+        (activity as? MainActivity)?.hideAdView()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             // Android 11 trở lên (API level 30)
@@ -179,8 +152,8 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
     }
 
     private fun showNormalMode() {
-        topAppBar.visibility = View.VISIBLE
         (activity as? MainActivity)?.showBottomNav()
+        (activity as? MainActivity)?.showAdView()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val insetsController = requireActivity().window.insetsController
@@ -208,8 +181,21 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
             .show()
     }
 
+    fun clearWebViewData() {
+        webView.clearCache(true)
+        webView.clearHistory()
+
+        val cookieManager = CookieManager.getInstance()
+        cookieManager.removeAllCookies(null)
+        cookieManager.flush()
+
+        WebStorage.getInstance().deleteAllData()
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
         callback.remove()
+        webView.onPause()
+        webView.destroy()
     }
 }

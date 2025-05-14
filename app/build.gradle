@@ -10,10 +10,10 @@ android {
 
     defaultConfig {
         applicationId "com.nhanxu.games"
-        minSdk 21
+        minSdk 23
         targetSdk 35
-        versionCode 5
-        versionName "6.9.3"
+        versionCode 6
+        versionName "9.3.6"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -65,4 +65,12 @@ dependencies {
     implementation 'com.google.android.material:material:1.13.0-alpha10'
 
     implementation 'com.google.android.gms:play-services-ads:24.2.0'
+
+    implementation platform('com.google.firebase:firebase-bom:33.13.0')
+    implementation 'com.google.firebase:firebase-analytics'
+
+    implementation "androidx.lifecycle:lifecycle-process:2.6.1"
 }
+
+apply plugin: 'com.google.gms.google-services'
+
