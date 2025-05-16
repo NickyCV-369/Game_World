@@ -12,8 +12,8 @@ android {
         applicationId "com.nhanxu.games"
         minSdk 23
         targetSdk 35
-        versionCode 6
-        versionName "9.3.6"
+        versionCode 7
+        versionName "9.3.9"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -69,7 +69,7 @@ dependencies {
     implementation platform('com.google.firebase:firebase-bom:33.13.0')
     implementation 'com.google.firebase:firebase-analytics'
 
-    implementation "androidx.lifecycle:lifecycle-process:2.6.1"
+    implementation 'androidx.lifecycle:lifecycle-process:2.8.3'
 }
 
 apply plugin: 'com.google.gms.google-services'

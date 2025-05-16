@@ -19,7 +19,6 @@ import android.app.PendingIntent
 import android.app.AlarmManager
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdView
-import com.google.android.gms.ads.MobileAds
 
 class MainActivity : AppCompatActivity() {
 
@@ -37,7 +36,17 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        MobileAds.initialize(this) {}
+        val myApp = application as MyApplication
+
+        myApp.loadAd(this)
+
+        Handler(Looper.getMainLooper()).postDelayed({
+            myApp.showAdIfAvailable(this, object : MyApplication.OnShowAdCompleteListener {
+                override fun onShowAdComplete() {
+                }
+            })
+        }, 3000)
+
         mAdView = findViewById(R.id.adView)
         val adRequest = AdRequest.Builder().build()
         mAdView.loadAd(adRequest)
@@ -255,7 +264,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun canConnectToInternet(): Boolean {
         return try {
-            val url = URL("https://www.google.com")
+            val url = URL("https://nhanxu.com/test-internet")
             val urlConnection: HttpURLConnection = url.openConnection() as HttpURLConnection
             urlConnection.apply {
                 requestMethod = "GET"

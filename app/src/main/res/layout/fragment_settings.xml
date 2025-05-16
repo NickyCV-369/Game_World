@@ -45,7 +45,7 @@
         android:id="@+id/tv_version"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Version: 6.3.9"
+        android:text="Version: 9.3.9"
         android:textSize="14sp"
         android:textColor="#888888"
         android:layout_gravity="center_horizontal|bottom" />

@@ -14,17 +14,27 @@ import android.view.WindowInsetsController
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
+import com.google.android.gms.ads.AdError
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.interstitial.InterstitialAd
+import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
+import com.google.android.gms.ads.FullScreenContentCallback
+import com.google.android.gms.ads.LoadAdError
 
 class HomeFragment : Fragment(R.layout.fragment_home) {
 
     private lateinit var webView: WebView
     private var isInIframe = false
     private lateinit var callback: OnBackPressedCallback
+    private var interstitialAd: InterstitialAd? = null
+    private var isInterstitialAdLoading = false
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         webView = view.findViewById(R.id.webView)
+
+        loadInterstitialAd()
 
         callback = object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -41,6 +51,47 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, callback)
 
         initWebView()
+    }
+
+    private fun loadInterstitialAd() {
+        if (isInterstitialAdLoading || interstitialAd != null) return
+
+        isInterstitialAdLoading = true
+        val adRequest = AdRequest.Builder().build()
+        InterstitialAd.load(
+            requireContext(),
+            "ca-app-pub-9218673410350376/9212597845",
+            adRequest,
+            object : InterstitialAdLoadCallback() {
+                override fun onAdLoaded(ad: InterstitialAd) {
+                    interstitialAd = ad
+                    isInterstitialAdLoading = false
+                }
+
+                override fun onAdFailedToLoad(adError: LoadAdError) {
+                    interstitialAd = null
+                    isInterstitialAdLoading = false
+                }
+            }
+        )
+    }
+
+    private fun showInterstitialAd() {
+        if (interstitialAd != null) {
+            interstitialAd?.fullScreenContentCallback = object : FullScreenContentCallback() {
+                override fun onAdDismissedFullScreenContent() {
+                    interstitialAd = null
+                    loadInterstitialAd()
+                }
+                override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+                    interstitialAd = null
+                    loadInterstitialAd()
+                }
+            }
+            interstitialAd?.show(requireActivity())
+        } else {
+            loadInterstitialAd()
+        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -122,6 +173,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
             @JavascriptInterface
             fun iframeRemoved() {
                 activity?.runOnUiThread {
+                    showInterstitialAd()
                     showNormalMode()
                     isInIframe = false
                 }
@@ -197,5 +249,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         callback.remove()
         webView.onPause()
         webView.destroy()
+        interstitialAd?.fullScreenContentCallback = null
+        interstitialAd = null
     }
 }
